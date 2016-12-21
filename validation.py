@@ -95,9 +95,9 @@ class BasicClassificationSearch(object):
             df = pd.DataFrame(gridsearch.cv_results_)
             df['model'] = model
 
-            master_df.append(df)
+            master_df = pd.concat([master_df, df], ignore_index=True)
 
-        return master_df
+        return master_df.sort_values(by='mean_test_score', ascending=False)
 
     def set_train_test(self, X, y, **kwargs):
         arg_dict = {"X": X, "y": y}
@@ -162,3 +162,27 @@ class BasicClassificationSearch(object):
         }
         grid_search = self.base_search(clf, search_parameters)
         return grid_search
+
+class ExplainGBM(object):
+    """
+    GBM-specific "ExplainMe"
+    """
+    def __init__(self, clf, feature_list):
+        self.clf = clf
+        self.importances = pretty_importances(clf, feature_list)
+
+
+
+
+class ExplainMe(object):
+    """
+    This class should be a factory that takes a fitted model
+    as input and then generates useful output based on
+    the model type.
+
+    For instance, if given a GBM, generate feature importances
+    and partial dependency plots for key variables.  Plot
+    the the test error vs number of estimators to check for
+    overfitting...etc.
+    """
+    pass
