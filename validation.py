@@ -34,29 +34,54 @@ def pretty_importances(clf, feature_list):
     ).sort_values(by='importance', ascending=False)
 
 
-def stratified_test_train_split(X, y, test_size=0.3, random_state=None):
+def plot_test_deviance(clf, X_test, y_test, label=None):
     """
-    Creates a stratified test/train split
+    A helper function to plot the deviance of the test set
+    as a function of the iterations from a gradient boosting
+    classifier
 
-    :param X: <pd.DataFrame> Features
-    :param y: <pd.DataFrame> Target to use stratification
-    :param test_size: <float> Proportion of data to use for test set
-    :param random_state: <int> Random state seed
-    :return: a tuple of four dataframes that are the train/test stratified
-        samples
+    Args:
+        clf (sklearn.ensemble.GradientBoostingClassifier):
+            the (fitted) gradient boosting classifier
+        X_test (pd.DataFrame): The features of the hold-out
+            test set
+        y_test (pd.DataFrame): The target of the hold-out
+            test set
+        label (int or str): An optional argument to label
+            the line.  Useful if calling this function
+            multiple times for different classifiers
     """
-    sss = StratifiedShuffleSplit(
-        n_splits=1,
-        test_size=test_size,
-        random_state=random_state,
-    )
+    n_estimators = len(clf.estimators_)
+    # compute test set deviance
+    test_deviance = np.zeros((n_estimators,), dtype=np.float64)
 
-    for train_idx, test_idx in sss.split(X, y):
-        X_train, y_train = X.loc[train_idx,], y[train_idx]
-        X_test, y_test = X.loc[test_idx,], y[test_idx]
+    for i, y_pred in enumerate(clf.staged_decision_function(X_test)):
+        test_deviance[i] = clf.loss_(y_test, y_pred)
 
-    return X_train, y_train, X_test, y_test
+    plt.plot((np.arange(test_deviance.shape[0]) + 1), test_deviance,
+             '-', label=label)
 
+    plt.xlabel('Boosting Iterations')
+    plt.ylabel('Test Set Deviance')
+    if label:
+        plt.legend(loc='upper left')
+    plt.title('Hold-Out Deviance vs Boosting Iteration')
+
+def plot_roc_curve(y_true, y_predict, label=None):
+    """
+    A helper function to hold boilerplate for plotting
+    the ROC curve of a model.
+
+    If iterating over multiple lines, then pass a value
+    for 'label'
+    """
+    fpr, tpr, thresholds = roc_curve(y_true, y_predict)
+    plt.plot(fpr, tpr, label=label)
+    plt.title('ROC curve', fontsize=16)
+    plt.xlabel('False Positive Rate', fontsize=14)
+    if label:
+        plt.legend(loc=4)
+    _ = plt.ylabel('True Positive Rate', fontsize=14)
 
 class BasicClassificationSearch(object):
     def __init__(self, model_list, X, y, **kwargs):
